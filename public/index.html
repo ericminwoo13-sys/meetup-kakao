@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>중간에서 만날래?</title>
+<title>중간 지점 찾기</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Space+Mono&display=swap');
@@ -83,16 +83,16 @@ header{height:58px;display:flex;align-items:center;gap:12px;padding:0 20px;backg
 <header>
   <div class="logo">📍</div>
   <div class="logo-text">
-    <h1>중간에서 만날래?</h1>
-    <p>모두에게 공평한 모임 장소를 찾아드릴게요</p>
+    <h1>중간 지점 찾기</h1>
+    <p>모두에게 공평한 만남 장소를 찾아드려요</p>
   </div>
 </header>
 <div class="layout">
   <aside class="panel">
     <div class="sec">
-      <div class="sec-label">장소 위치</div>
+      <div class="sec-label">친구 위치</div>
       <div class="friend-rows" id="friendRows"></div>
-      <button class="add-btn" id="addBtn"><span style="font-size:16px;line-height:1">+</span> 장소 추가</button>
+      <button class="add-btn" id="addBtn"><span style="font-size:16px;line-height:1">+</span> 친구 추가</button>
       <button class="find-btn" id="findBtn">🔍 중간 지점 찾기</button>
       <div class="ld" id="ld"><div class="spin"></div> 계산 중…</div>
     </div>
@@ -128,7 +128,7 @@ function init() {
  
   map = L.map('map', {
     center: [37.5759, 126.9769],
-    zoom: 13,
+    zoom: 15,
     zoomControl: true,
   });
  
