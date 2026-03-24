@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>중간 지점 찾기</title>
+<title>중간에서 만날래?</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Space+Mono&display=swap');
@@ -83,16 +83,16 @@ header{height:58px;display:flex;align-items:center;gap:12px;padding:0 20px;backg
 <header>
   <div class="logo">📍</div>
   <div class="logo-text">
-    <h1>중간 지점 찾기</h1>
-    <p>모두에게 공평한 만남 장소를 찾아드려요</p>
+    <h1>중간에서 만날래?</h1>
+    <p>모두에게 공평한 모임 장소를 찾아드릴게요</p>
   </div>
 </header>
 <div class="layout">
   <aside class="panel">
     <div class="sec">
-      <div class="sec-label">친구 위치</div>
+      <div class="sec-label">장소 위치</div>
       <div class="friend-rows" id="friendRows"></div>
-      <button class="add-btn" id="addBtn"><span style="font-size:16px;line-height:1">+</span> 친구 추가</button>
+      <button class="add-btn" id="addBtn"><span style="font-size:16px;line-height:1">+</span> 장소 추가</button>
       <button class="find-btn" id="findBtn">🔍 중간 지점 찾기</button>
       <div class="ld" id="ld"><div class="spin"></div> 계산 중…</div>
     </div>
@@ -114,31 +114,31 @@ header{height:58px;display:flex;align-items:center;gap:12px;padding:0 20px;backg
   </aside>
   <div id="map"></div>
 </div>
-
+ 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>
 var COLORS = ['#5b8dee','#f06595','#3ecf8e','#f7b731','#a29bfe','#fd79a8','#00cec9','#e17055'];
 var SUBWAY_COLORS = {'1호선':'#0052A4','2호선':'#00A84D','3호선':'#EF7C1C','4호선':'#00A5DE','5호선':'#996CAC','6호선':'#CD7C2F','7호선':'#747F00','8호선':'#E6186C','9호선':'#BDB092','신분당선':'#D4003B','경강선':'#0052A4','수인분당선':'#F5A200','경의중앙선':'#77C4A3','GTX-A':'#9E4784'};
-
+ 
 var map, friends, uid, fMarkers, midMarkers, polylines, placeMarkers, activeMid, acTimers;
-
+ 
 function init() {
   friends = [{id:0,label:'친구 1',addr:'',lat:null,lng:null},{id:1,label:'친구 2',addr:'',lat:null,lng:null}];
   uid=2; fMarkers=[]; midMarkers=[]; polylines=[]; placeMarkers=[]; activeMid=null; acTimers={};
-
+ 
   map = L.map('map', {
-    center: [37.5326, 127.0246],
-    zoom: 8,
+    center: [37.5759, 126.9769],
+    zoom: 13,
     zoomControl: true,
   });
-
+ 
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap contributors',
     maxZoom: 19,
   }).addTo(map);
-
+ 
   renderFriends();
-
+ 
   document.getElementById('addBtn').addEventListener('click', addFriend);
   document.getElementById('findBtn').addEventListener('click', doFind);
   document.getElementById('catTabs').addEventListener('click', function(e) {
@@ -155,7 +155,7 @@ function init() {
     });
   });
 }
-
+ 
 function renderFriends() {
   var wrap = document.getElementById('friendRows');
   wrap.innerHTML = '';
@@ -180,18 +180,18 @@ function renderFriends() {
     if (rm) rm.addEventListener('click', function(){removeFriend(parseInt(this.dataset.id));});
   });
 }
-
+ 
 function addFriend() {
   friends.push({id:uid++, label:'친구 '+(friends.length+1), addr:'', lat:null, lng:null});
   renderFriends();
 }
-
+ 
 function removeFriend(id) {
   friends = friends.filter(function(f){return f.id!==id;});
   renderFriends();
   refreshFMarkers();
 }
-
+ 
 function onInput(id, val) {
   var f = friends.find(function(f){return f.id===id;});
   if (!f) return;
@@ -200,7 +200,7 @@ function onInput(id, val) {
   if (!val || val.length<2) {closeAc(id); return;}
   acTimers[id] = setTimeout(function(){fetchAc(id, val);}, 380);
 }
-
+ 
 function fetchAc(id, query) {
   Promise.all([
     fetch('/api/search/keyword?query='+encodeURIComponent(query)).then(function(r){return r.json();}),
@@ -217,7 +217,7 @@ function fetchAc(id, query) {
     showAc(id, items.slice(0,6));
   }).catch(function(){closeAc(id);});
 }
-
+ 
 function showAc(id, items) {
   var drop = document.getElementById('ac-'+id);
   if (!drop || !items.length) {closeAc(id); return;}
@@ -231,9 +231,9 @@ function showAc(id, items) {
   });
   drop.style.display = 'block';
 }
-
+ 
 function closeAc(id) {var d=document.getElementById('ac-'+id); if(d) d.style.display='none';}
-
+ 
 function pickAddr(id, name, lat, lng) {
   var f = friends.find(function(f){return f.id===id;});
   if (!f) return;
@@ -243,7 +243,7 @@ function pickAddr(id, name, lat, lng) {
   closeAc(id);
   refreshFMarkers();
 }
-
+ 
 function refreshFMarkers() {
   fMarkers.forEach(function(m){map.removeLayer(m);}); fMarkers=[];
   var valid = friends.filter(function(f){return f.lat&&f.lng;});
@@ -263,7 +263,7 @@ function refreshFMarkers() {
     map.fitBounds(bounds, {padding:[50,50]});
   }
 }
-
+ 
 function doFind() {
   var valid = friends.filter(function(f){return f.lat&&f.lng;});
   if (valid.length < 2) {alert('위치를 2개 이상 입력해 주세요.'); return;}
@@ -276,18 +276,18 @@ function doFind() {
   .then(function(data){showResults(data, valid);})
   .catch(function(e){alert('오류: '+e.message); setBusy(false);});
 }
-
+ 
 function showResults(data, valid) {
   var simple=data.simple, tb=data.timeBased;
   Promise.all([revGeo(simple.lng, simple.lat), revGeo(tb.lng, tb.lat)]).then(function(addrs) {
     midMarkers.forEach(function(m){map.removeLayer(m);}); midMarkers=[];
     polylines.forEach(function(p){map.removeLayer(p);}); polylines=[];
-
+ 
     var pts = [
       {lat:simple.lat, lng:simple.lng, label:'거리 기반', desc:'좌표 평균 중간점', badgeClass:'badge-g', color:'#3ecf8e', addr:addrs[0]},
       {lat:tb.lat, lng:tb.lng, label:'이동 시간 기반', desc:'최대 이동시간 최소 지점', badgeClass:'badge-b', color:'#5b8dee', addr:addrs[1]}
     ];
-
+ 
     pts.forEach(function(pt, pi) {
       var icon = L.divIcon({
         className: '',
@@ -297,7 +297,7 @@ function showResults(data, valid) {
       var marker = L.marker([pt.lat, pt.lng], {icon:icon, zIndexOffset:1000}).addTo(map);
       marker.bindPopup('<b>'+pt.label+'</b><br>'+pt.addr);
       midMarkers.push(marker);
-
+ 
       valid.forEach(function(f, fi) {
         var line = L.polyline([[f.lat,f.lng],[pt.lat,pt.lng]], {
           color:COLORS[fi%COLORS.length], weight:1.5, opacity:0.4, dashArray:'6,6'
@@ -305,12 +305,12 @@ function showResults(data, valid) {
         polylines.push(line);
       });
     });
-
+ 
     document.getElementById('secResult').style.display = 'block';
     document.getElementById('secPlaces').style.display = 'block';
     var grid = document.getElementById('resultGrid');
     grid.innerHTML = '';
-
+ 
     pts.forEach(function(pt, pi) {
       var card = document.createElement('div');
       card.className = 'r-card' + (pi===0?' sel':'');
@@ -331,14 +331,14 @@ function showResults(data, valid) {
       grid.appendChild(card);
       loadSubwayBadges(pt.lat, pt.lng, pi);
     });
-
+ 
     activeMid = pts[0];
     map.setView([pts[0].lat, pts[0].lng], 12);
     loadPlaces('FD6', pts[0].lat, pts[0].lng);
     setBusy(false);
   });
 }
-
+ 
 function loadSubwayBadges(lat, lng, pi) {
   fetch('/api/search/category?category_group_code=SW8&x='+lng+'&y='+lat+'&radius=2000')
     .then(function(r){return r.json();})
@@ -363,12 +363,12 @@ function loadSubwayBadges(lat, lng, pi) {
       if (!row.children.length) row.innerHTML = '<span style="font-size:11px;color:#3a4259">근처 지하철역 없음</span>';
     }).catch(function(){});
 }
-
+ 
 function loadPlaces(code, lat, lng) {
   var list = document.getElementById('placeList');
   list.innerHTML = '<div class="empty"><div class="spin" style="margin:0 auto 8px"></div></div>';
   placeMarkers.forEach(function(m){map.removeLayer(m);}); placeMarkers=[];
-
+ 
   fetch('/api/search/category?category_group_code='+code+'&x='+lng+'&y='+lat+'&radius=3000')
     .then(function(r){return r.json();})
     .then(function(data) {
@@ -387,7 +387,7 @@ function loadPlaces(code, lat, lng) {
             (d.distance ? '<div class="p-dist">중간점에서 '+Math.round(d.distance)+'m</div>' : '')+
           '</div>';
         el.addEventListener('click', function(){map.setView([plat, plng], 16);});
-
+ 
         var icon = L.divIcon({
           className:'',
           html:'<div style="background:#1a1e2b;border:1.5px solid #5b8dee;border-radius:6px;padding:2px 7px;font-size:11px;color:#dde3f0;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.4)">'+(i+1)+'. '+(d.place_name.length>8?d.place_name.slice(0,8)+'…':d.place_name)+'</div>',
@@ -398,7 +398,7 @@ function loadPlaces(code, lat, lng) {
       });
     }).catch(function(e){list.innerHTML='<div class="empty">오류: '+e.message+'</div>';});
 }
-
+ 
 function revGeo(lng, lat) {
   return fetch('/api/geo/coord2address?x='+lng+'&y='+lat)
     .then(function(r){return r.json();})
@@ -408,12 +408,12 @@ function revGeo(lng, lat) {
       return (doc.road_address&&doc.road_address.address_name)||(doc.address&&doc.address.address_name)||lat.toFixed(4)+', '+lng.toFixed(4);
     }).catch(function(){return lat.toFixed(4)+', '+lng.toFixed(4);});
 }
-
+ 
 function setBusy(on) {
   document.getElementById('findBtn').disabled = on;
   document.getElementById('ld').classList.toggle('on', on);
 }
-
+ 
 window.addEventListener('load', init);
 </script>
 </body>
