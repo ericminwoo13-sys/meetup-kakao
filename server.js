@@ -7,14 +7,6 @@ const path    = require('path');
 const app = express();
 app.use(cors());
 app.use(express.json());
-/* ── index.html에 카카오 JS 키 직접 주입 ── */
-app.get('/', (req, res) => {
-  const fs = require('fs');
-  let html = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
-  html = html.replace('__KAKAO_JS_KEY__', process.env.KAKAO_JS_KEY || '');
-  res.send(html);
-});
-
 app.use(express.static(path.join(__dirname, 'public')));
 
 const REST_KEY = process.env.KAKAO_REST_KEY;
