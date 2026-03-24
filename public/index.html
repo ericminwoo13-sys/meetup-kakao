@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>중간 지점 찾기</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Space+Mono&display=swap');
+:root{
+  --bg:#0c0e14;--surface:#13161f;--surface2:#1a1e2b;--surface3:#1f2435;
+  --border:#252a3a;--border2:#2f3649;
+  --accent:#5b8dee;--accent-glow:rgba(91,141,238,.18);
+  --green:#3ecf8e;--green-glow:rgba(62,207,142,.15);
+  --red:#f06595;
+  --text:#dde3f0;--text2:#7b88a8;--text3:#3a4259;
+  --r:10px;--r2:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text)}
+header{height:58px;display:flex;align-items:center;gap:12px;padding:0 20px;background:var(--surface);border-bottom:1px solid var(--border);z-index:10;}
+.logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,var(--accent),#8b6dff);display:flex;align-items:center;justify-content:center;font-size:17px;}
+.logo-text h1{font-size:15px;font-weight:700;}
+.logo-text p{font-size:11px;color:var(--text2);margin-top:1px}
+.layout{display:flex;height:calc(100vh - 58px)}
+.panel{width:360px;min-width:320px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;}
+.panel::-webkit-scrollbar{width:4px}
+.panel::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+.sec{padding:18px;border-bottom:1px solid var(--border)}
+.sec-label{font-size:10px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:var(--text3);margin-bottom:14px;}
+.friend-rows{display:flex;flex-direction:column;gap:8px}
+.friend-row{display:flex;align-items:center;gap:9px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:9px 11px;transition:border-color .2s;}
+.friend-row:focus-within{border-color:var(--accent)}
+.f-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.ac-wrap{flex:1;position:relative}
+.ac-wrap input{width:100%;background:none;border:none;outline:none;color:var(--text);font-family:'Noto Sans KR',sans-serif;font-size:13px;}
+.ac-wrap input::placeholder{color:var(--text3)}
+.ac-drop{display:none;position:absolute;top:calc(100% + 8px);left:-40px;width:290px;background:var(--surface3);border:1px solid var(--border2);border-radius:var(--r2);z-index:9999;overflow:hidden;box-shadow:0 12px 32px rgba(0,0,0,.5);}
+.ac-item{padding:9px 14px;font-size:12px;cursor:pointer;border-bottom:1px solid var(--border);}
+.ac-item:last-child{border-bottom:none}
+.ac-item:hover{background:var(--accent-glow)}
+.ac-item .sub{font-size:10px;color:var(--text2);margin-top:2px}
+.rm-btn{background:none;border:none;cursor:pointer;color:var(--text3);font-size:15px;padding:0 2px;line-height:1;flex-shrink:0;}
+.rm-btn:hover{color:var(--red)}
+.add-btn{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;padding:9px;margin-top:8px;background:none;border:1px dashed var(--border2);border-radius:var(--r);color:var(--text2);font-size:13px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;}
+.add-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-glow)}
+.find-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;margin-top:12px;background:var(--accent);border:none;border-radius:var(--r);color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif;}
+.find-btn:hover{opacity:.88}
+.find-btn:disabled{opacity:.35;cursor:not-allowed}
+.ld{display:none;align-items:center;gap:9px;padding:10px 0;font-size:12px;color:var(--text2)}
+.ld.on{display:flex}
+.spin{width:14px;height:14px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .65s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.result-grid{display:flex;flex-direction:column;gap:8px}
+.r-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r2);padding:13px 14px;cursor:pointer;transition:border-color .2s,background .2s;}
+.r-card:hover{border-color:var(--accent)}
+.r-card.sel{border-color:var(--accent);background:var(--accent-glow)}
+.r-card-top{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.badge{font-size:9px;font-weight:700;letter-spacing:.8px;padding:3px 8px;border-radius:20px;text-transform:uppercase;}
+.badge-g{background:var(--green-glow);color:var(--green)}
+.badge-b{background:var(--accent-glow);color:var(--accent)}
+.r-card h3{font-size:13px;font-weight:500;line-height:1.4}
+.r-card .desc{font-size:11px;color:var(--text2);margin-top:4px}
+.r-card .coords{font-family:'Space Mono',monospace;font-size:10px;color:var(--text3);margin-top:6px}
+.subway-row{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+.s-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;color:#fff;display:inline-flex;align-items:center;cursor:pointer;}
+.cat-tabs{display:flex;flex-wrap:wrap;gap:5px}
+.cat-tab{padding:5px 11px;border-radius:20px;font-size:12px;font-weight:500;border:1px solid var(--border);background:none;color:var(--text2);cursor:pointer;font-family:'Noto Sans KR',sans-serif;}
+.cat-tab:hover,.cat-tab.on{border-color:var(--accent);color:var(--accent);background:var(--accent-glow)}
+.place-list{display:flex;flex-direction:column;gap:7px;margin-top:12px}
+.p-item{display:flex;gap:10px;align-items:flex-start;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:11px 12px;cursor:pointer;}
+.p-item:hover{border-color:var(--accent)}
+.p-num{width:22px;height:22px;border-radius:6px;flex-shrink:0;background:var(--accent-glow);color:var(--accent);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;}
+.p-info h4{font-size:13px;font-weight:500}
+.p-info .p-addr{font-size:11px;color:var(--text2);margin-top:3px;line-height:1.4}
+.p-info .p-dist{font-size:10px;color:var(--text3);margin-top:4px}
+.empty{text-align:center;padding:24px 0;font-size:12px;color:var(--text3);line-height:2}
+#map{flex:1}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">📍</div>
+  <div class="logo-text">
+    <h1>중간 지점 찾기</h1>
+    <p>모두에게 공평한 만남 장소를 찾아드려요</p>
+  </div>
+</header>
+<div class="layout">
+  <aside class="panel">
+    <div class="sec">
+      <div class="sec-label">친구 위치</div>
+      <div class="friend-rows" id="friendRows"></div>
+      <button class="add-btn" id="addBtn"><span style="font-size:16px;line-height:1">+</span> 친구 추가</button>
+      <button class="find-btn" id="findBtn">🔍 중간 지점 찾기</button>
+      <div class="ld" id="ld"><div class="spin"></div> 계산 중…</div>
+    </div>
+    <div class="sec" id="secResult" style="display:none">
+      <div class="sec-label">계산 결과</div>
+      <div class="result-grid" id="resultGrid"></div>
+    </div>
+    <div class="sec" id="secPlaces" style="display:none">
+      <div class="sec-label">주변 장소</div>
+      <div class="cat-tabs" id="catTabs">
+        <button class="cat-tab on" data-code="FD6">🍽 맛집</button>
+        <button class="cat-tab" data-code="CE7">☕ 카페</button>
+        <button class="cat-tab" data-code="SW8">🚇 지하철</button>
+        <button class="cat-tab" data-code="AT4">🎭 볼거리</button>
+        <button class="cat-tab" data-code="CT1">🏛 문화</button>
+      </div>
+      <div class="place-list" id="placeList"><div class="empty">중간 지점을 먼저 선택해 주세요</div></div>
+    </div>
+  </aside>
+  <div id="map"></div>
+</div>
+
+<script>
+var COLORS = ['#5b8dee','#f06595','#3ecf8e','#f7b731','#a29bfe','#fd79a8','#00cec9','#e17055'];
+var SUBWAY_COLORS = {'1호선':'#0052A4','2호선':'#00A84D','3호선':'#EF7C1C','4호선':'#00A5DE','5호선':'#996CAC','6호선':'#CD7C2F','7호선':'#747F00','8호선':'#E6186C','9호선':'#BDB092','신분당선':'#D4003B','경강선':'#0052A4','수인분당선':'#F5A200','경의중앙선':'#77C4A3','GTX-A':'#9E4784'};
+
+var map = null;
+var friends = [{id:0,label:'친구 1',addr:'',lat:null,lng:null},{id:1,label:'친구 2',addr:'',lat:null,lng:null}];
+var uid = 2;
+var fMarkers=[],midMarkers=[],polylines=[],placeMarkers=[];
+var activeMid = null;
+var acTimers = {};
+
+/* 카카오 SDK 로드 */
+fetch('/api/config').then(function(r){return r.json();}).then(function(cfg){
+  var s = document.createElement('script');
+  s.src = 'https://dapi.kakao.com/v2/maps/sdk.js?appkey='+cfg.jsKey+'&libraries=services&autoload=false';
+  s.onload = function(){
+    kakao.maps.load(function(){
+      /* 지도 생성 */
+      map = new kakao.maps.Map(document.getElementById('map'),{
+        center: new kakao.maps.LatLng(37.5326,127.0246), level:8
+      });
+      map.addControl(new kakao.maps.ZoomControl(), kakao.maps.ControlPosition.RIGHT);
+
+      /* 친구 목록 렌더 */
+      renderFriends();
+
+      /* 버튼 이벤트 — SDK 로드 완료 후 바인딩 */
+      document.getElementById('addBtn').onclick = function(){ addFriend(); };
+      document.getElementById('findBtn').onclick = function(){ doFind(); };
+      document.getElementById('catTabs').onclick = function(e){
+        var btn = e.target.closest('.cat-tab');
+        if(!btn) return;
+        document.querySelectorAll('.cat-tab').forEach(function(t){t.classList.remove('on');});
+        btn.classList.add('on');
+        if(activeMid) loadPlaces(btn.dataset.code, activeMid.lat, activeMid.lng);
+      };
+      document.addEventListener('click', function(e){
+        friends.forEach(function(f){
+          var d=document.getElementById('ac-'+f.id), i=document.getElementById('inp-'+f.id);
+          if(d && !d.contains(e.target) && e.target!==i) d.style.display='none';
+        });
+      });
+    });
+  };
+  document.head.appendChild(s);
+});
+
+function renderFriends(){
+  var wrap=document.getElementById('friendRows');
+  wrap.innerHTML='';
+  friends.forEach(function(f,i){
+    var color=COLORS[i%COLORS.length];
+    var div=document.createElement('div');
+    div.className='friend-row';
+    div.innerHTML=
+      '<div class="f-dot" style="background:'+color+'"></div>'+
+      '<div class="ac-wrap">'+
+        '<input id="inp-'+f.id+'" type="text" value="'+f.addr+'" placeholder="'+f.label+' 위치 검색" autocomplete="off"/>'+
+        '<div class="ac-drop" id="ac-'+f.id+'"></div>'+
+      '</div>'+
+      (friends.length>2?'<button class="rm-btn" data-id="'+f.id+'">✕</button>':'');
+    wrap.appendChild(div);
+    (function(fid){
+      var inp=document.getElementById('inp-'+fid);
+      inp.addEventListener('input',function(){onInput(fid,this.value);});
+      inp.addEventListener('focus',function(){if(this.value.length>=2)onInput(fid,this.value);});
+    })(f.id);
+    var rm=div.querySelector('.rm-btn');
+    if(rm) rm.addEventListener('click',function(){removeFriend(parseInt(this.dataset.id));});
+  });
+}
+
+function addFriend(){
+  friends.push({id:uid++,label:'친구 '+(friends.length+1),addr:'',lat:null,lng:null});
+  renderFriends();
+}
+function removeFriend(id){
+  friends=friends.filter(function(f){return f.id!==id;});
+  renderFriends(); refreshFMarkers();
+}
+
+function onInput(id,val){
+  var f=friends.find(function(f){return f.id===id;});
+  if(!f) return;
+  f.addr=val; f.lat=null; f.lng=null;
+  clearTimeout(acTimers[id]);
+  if(!val||val.length<2){closeAc(id);return;}
+  acTimers[id]=setTimeout(function(){fetchAc(id,val);},380);
+}
+
+function fetchAc(id,query){
+  Promise.all([
+    fetch('/api/search/keyword?query='+encodeURIComponent(query)).then(function(r){return r.json();}),
+    fetch('/api/search/address?query='+encodeURIComponent(query)).then(function(r){return r.json();})
+  ]).then(function(results){
+    var kw=results[0], addr=results[1], items=[];
+    (kw.documents||[]).slice(0,4).forEach(function(d){items.push({name:d.place_name,addr:d.road_address_name||d.address_name,lat:parseFloat(d.y),lng:parseFloat(d.x)});});
+    (addr.documents||[]).slice(0,3).forEach(function(d){var a=d.road_address||d.address;if(a)items.push({name:a.address_name,addr:'',lat:parseFloat(d.y),lng:parseFloat(d.x)});});
+    showAc(id,items.slice(0,6));
+  }).catch(function(){closeAc(id);});
+}
+
+function showAc(id,items){
+  var drop=document.getElementById('ac-'+id);
+  if(!drop||!items.length){closeAc(id);return;}
+  drop.innerHTML='';
+  items.forEach(function(it){
+    var div=document.createElement('div');
+    div.className='ac-item';
+    div.innerHTML=it.name+(it.addr?'<div class="sub">'+it.addr+'</div>':'');
+    (function(item){div.addEventListener('click',function(){pickAddr(id,item.name,item.lat,item.lng);});})(it);
+    drop.appendChild(div);
+  });
+  drop.style.display='block';
+}
+function closeAc(id){var d=document.getElementById('ac-'+id);if(d)d.style.display='none';}
+function pickAddr(id,name,lat,lng){
+  var f=friends.find(function(f){return f.id===id;});
+  if(!f) return;
+  f.addr=name;f.lat=lat;f.lng=lng;
+  var inp=document.getElementById('inp-'+id);
+  if(inp)inp.value=name;
+  closeAc(id); refreshFMarkers();
+}
+
+function refreshFMarkers(){
+  fMarkers.forEach(function(m){m.setMap(null);}); fMarkers=[];
+  var valid=friends.filter(function(f){return f.lat&&f.lng;});
+  valid.forEach(function(f,i){
+    var color=COLORS[friends.indexOf(f)%COLORS.length];
+    var svg='<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18"><circle cx="9" cy="9" r="7" fill="'+color+'" stroke="#fff" stroke-width="2.5"/></svg>';
+    var m=new kakao.maps.Marker({map:map,position:new kakao.maps.LatLng(f.lat,f.lng),image:new kakao.maps.MarkerImage('data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg),new kakao.maps.Size(18,18),{offset:new kakao.maps.Point(9,9)})});
+    fMarkers.push(m);
+  });
+  if(valid.length>=2){var b=new kakao.maps.LatLngBounds();valid.forEach(function(f){b.extend(new kakao.maps.LatLng(f.lat,f.lng));});map.setBounds(b,80,80,80,80);}
+}
+
+function doFind(){
+  var valid=friends.filter(function(f){return f.lat&&f.lng;});
+  if(valid.length<2){alert('위치를 2개 이상 입력해 주세요.');return;}
+  setBusy(true);
+  fetch('/api/midpoint',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({locations:valid})})
+    .then(function(r){return r.json();})
+    .then(function(data){showResults(data,valid);})
+    .catch(function(e){alert('오류: '+e.message);setBusy(false);});
+}
+
+function showResults(data,valid){
+  var simple=data.simple, tb=data.timeBased;
+  Promise.all([revGeo(simple.lng,simple.lat),revGeo(tb.lng,tb.lat)]).then(function(addrs){
+    midMarkers.forEach(function(m){m.setMap(null);}); midMarkers=[];
+    polylines.forEach(function(p){p.setMap(null);}); polylines=[];
+    var pts=[
+      {lat:simple.lat,lng:simple.lng,label:'거리 기반',desc:'좌표 평균 중간점',badgeClass:'badge-g',icon:'◉',color:'#3ecf8e',addr:addrs[0]},
+      {lat:tb.lat,lng:tb.lng,label:'이동 시간 기반',desc:'최대 이동시간 최소 지점',badgeClass:'badge-b',icon:'★',color:'#5b8dee',addr:addrs[1]}
+    ];
+    pts.forEach(function(pt,pi){
+      var svg='<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><circle cx="16" cy="16" r="13" fill="'+pt.color+'" stroke="#fff" stroke-width="2.5"/><text x="16" y="21" text-anchor="middle" font-size="13" fill="#fff" font-family="sans-serif">'+pt.icon+'</text></svg>';
+      midMarkers.push(new kakao.maps.Marker({map:map,zIndex:100,position:new kakao.maps.LatLng(pt.lat,pt.lng),image:new kakao.maps.MarkerImage('data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg),new kakao.maps.Size(32,32),{offset:new kakao.maps.Point(16,16)})}));
+      valid.forEach(function(f,fi){
+        polylines.push(new kakao.maps.Polyline({map:map,path:[new kakao.maps.LatLng(f.lat,f.lng),new kakao.maps.LatLng(pt.lat,pt.lng)],strokeWeight:1.5,strokeOpacity:0.4,strokeColor:COLORS[fi%COLORS.length],strokeStyle:'shortdash'}));
+      });
+    });
+    document.getElementById('secResult').style.display='block';
+    document.getElementById('secPlaces').style.display='block';
+    var grid=document.getElementById('resultGrid');
+    grid.innerHTML='';
+    pts.forEach(function(pt,pi){
+      var card=document.createElement('div');
+      card.className='r-card'+(pi===0?' sel':'');
+      card.innerHTML='<div class="r-card-top"><span class="badge '+pt.badgeClass+'">'+pt.label+'</span></div><h3>'+pt.addr+'</h3><div class="desc">'+pt.desc+'</div><div class="coords">'+pt.lat.toFixed(5)+', '+pt.lng.toFixed(5)+'</div><div class="subway-row" id="sw-'+pi+'"></div>';
+      (function(p){card.addEventListener('click',function(){
+        document.querySelectorAll('.r-card').forEach(function(c){c.classList.remove('sel');});
+        card.classList.add('sel'); activeMid=p;
+        map.setCenter(new kakao.maps.LatLng(p.lat,p.lng)); map.setLevel(6);
+        var onTab=document.querySelector('.cat-tab.on');
+        if(onTab) loadPlaces(onTab.dataset.code,p.lat,p.lng);
+      });})(pt);
+      grid.appendChild(card);
+      loadSubwayBadges(pt.lat,pt.lng,pi);
+    });
+    activeMid=pts[0];
+    map.setCenter(new kakao.maps.LatLng(pts[0].lat,pts[0].lng)); map.setLevel(7);
+    loadPlaces('FD6',pts[0].lat,pts[0].lng);
+    setBusy(false);
+  });
+}
+
+function loadSubwayBadges(lat,lng,pi){
+  fetch('/api/search/category?category_group_code=SW8&x='+lng+'&y='+lat+'&radius=2000')
+    .then(function(r){return r.json();})
+    .then(function(data){
+      var row=document.getElementById('sw-'+pi); if(!row) return;
+      var seen=new Set();
+      (data.documents||[]).slice(0,4).forEach(function(d){
+        if(seen.has(d.place_name)) return; seen.add(d.place_name);
+        var match=d.place_name.match(/(\d+호선|신분당선|경강선|수인분당선|경의중앙선|GTX-[A-Z])/);
+        var color=match?(SUBWAY_COLORS[match[1]]||'#444'):'#444';
+        var badge=document.createElement('span');
+        badge.className='s-badge'; badge.style.background=color; badge.textContent=d.place_name;
+        (function(doc){badge.addEventListener('click',function(e){e.stopPropagation();map.setCenter(new kakao.maps.LatLng(parseFloat(doc.y),parseFloat(doc.x)));map.setLevel(4);});})(d);
+        row.appendChild(badge);
+      });
+      if(!row.children.length) row.innerHTML='<span style="font-size:11px;color:#3a4259">근처 지하철역 없음</span>';
+    }).catch(function(){});
+}
+
+function loadPlaces(code,lat,lng){
+  var list=document.getElementById('placeList');
+  list.innerHTML='<div class="empty"><div class="spin" style="margin:0 auto 8px"></div></div>';
+  placeMarkers.forEach(function(m){m.setMap(null);}); placeMarkers=[];
+  fetch('/api/search/category?category_group_code='+code+'&x='+lng+'&y='+lat+'&radius=3000')
+    .then(function(r){return r.json();})
+    .then(function(data){
+      var docs=data.documents||[];
+      if(!docs.length){list.innerHTML='<div class="empty">검색 결과 없음</div>';return;}
+      list.innerHTML='';
+      docs.slice(0,5).forEach(function(d,i){
+        var plat=parseFloat(d.y),plng=parseFloat(d.x);
+        var el=document.createElement('div'); el.className='p-item';
+        el.innerHTML='<div class="p-num">'+(i+1)+'</div><div class="p-info"><h4>'+d.place_name+'</h4><div class="p-addr">'+(d.road_address_name||d.address_name||'')+'</div>'+(d.distance?'<div class="p-dist">중간점에서 '+Math.round(d.distance)+'m</div>':'')+'</div>';
+        el.addEventListener('click',function(){map.setCenter(new kakao.maps.LatLng(plat,plng));map.setLevel(4);});
+        var svg='<svg xmlns="http://www.w3.org/2000/svg" width="120" height="28"><rect x="0" y="2" width="118" height="22" rx="6" fill="#1a1e2b" stroke="#5b8dee" stroke-width="1.2"/><circle cx="13" cy="13" r="7" fill="#5b8dee"/><text x="13" y="17" text-anchor="middle" font-size="9" fill="#fff" font-family="sans-serif" font-weight="bold">'+(i+1)+'</text><text x="26" y="17" font-size="10" fill="#dde3f0" font-family="sans-serif">'+(d.place_name.length>8?d.place_name.slice(0,8)+'…':d.place_name)+'</text></svg>';
+        placeMarkers.push(new kakao.maps.Marker({map:map,position:new kakao.maps.LatLng(plat,plng),zIndex:50,image:new kakao.maps.MarkerImage('data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg),new kakao.maps.Size(120,28),{offset:new kakao.maps.Point(12,14)})}));
+        list.appendChild(el);
+      });
+    }).catch(function(e){list.innerHTML='<div class="empty">오류: '+e.message+'</div>';});
+}
+
+function revGeo(lng,lat){
+  return fetch('/api/geo/coord2address?x='+lng+'&y='+lat)
+    .then(function(r){return r.json();})
+    .then(function(d){
+      var doc=d.documents&&d.documents[0];
+      if(!doc) return lat.toFixed(4)+', '+lng.toFixed(4);
+      return (doc.road_address&&doc.road_address.address_name)||(doc.address&&doc.address.address_name)||lat.toFixed(4)+', '+lng.toFixed(4);
+    }).catch(function(){return lat.toFixed(4)+', '+lng.toFixed(4);});
+}
+
+function setBusy(on){
+  document.getElementById('findBtn').disabled=on;
+  document.getElementById('ld').classList.toggle('on',on);
+}
+</script>
+</body>
+</html>
