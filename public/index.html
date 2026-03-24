@@ -112,33 +112,33 @@ header{height:58px;display:flex;align-items:center;gap:12px;padding:0 20px;backg
   </aside>
   <div id="map"></div>
 </div>
-
+ 
 <script>
 var COLORS = ['#5b8dee','#f06595','#3ecf8e','#f7b731','#a29bfe','#fd79a8','#00cec9','#e17055'];
 var SUBWAY_COLORS = {'1호선':'#0052A4','2호선':'#00A84D','3호선':'#EF7C1C','4호선':'#00A5DE','5호선':'#996CAC','6호선':'#CD7C2F','7호선':'#747F00','8호선':'#E6186C','9호선':'#BDB092','신분당선':'#D4003B','경강선':'#0052A4','수인분당선':'#F5A200','경의중앙선':'#77C4A3','GTX-A':'#9E4784'};
-
+ 
 var map = null;
 var friends = [{id:0,label:'친구 1',addr:'',lat:null,lng:null},{id:1,label:'친구 2',addr:'',lat:null,lng:null}];
 var uid = 2;
 var fMarkers=[],midMarkers=[],polylines=[],placeMarkers=[];
 var activeMid = null;
 var acTimers = {};
-
+ 
 /* 카카오 SDK 로드 */
 fetch('/api/config').then(function(r){return r.json();}).then(function(cfg){
   var s = document.createElement('script');
-  s.src = 'https://dapi.kakao.com/v2/maps/sdk.js?appkey='+cfg.jsKey+'&libraries=services&autoload=false';
+  s.src = 'https://dapi.kakao.com/v2/maps/sdk.js?appkey='+cfg.jsKey+'&libraries=services';
   s.onload = function(){
-    kakao.maps.load(function(){
+    (function(){
       /* 지도 생성 */
       map = new kakao.maps.Map(document.getElementById('map'),{
         center: new kakao.maps.LatLng(37.5326,127.0246), level:8
       });
       map.addControl(new kakao.maps.ZoomControl(), kakao.maps.ControlPosition.RIGHT);
-
+ 
       /* 친구 목록 렌더 */
       renderFriends();
-
+ 
       /* 버튼 이벤트 — SDK 로드 완료 후 바인딩 */
       document.getElementById('addBtn').onclick = function(){ addFriend(); };
       document.getElementById('findBtn').onclick = function(){ doFind(); };
@@ -155,11 +155,11 @@ fetch('/api/config').then(function(r){return r.json();}).then(function(cfg){
           if(d && !d.contains(e.target) && e.target!==i) d.style.display='none';
         });
       });
-    });
+    })();
   };
   document.head.appendChild(s);
 });
-
+ 
 function renderFriends(){
   var wrap=document.getElementById('friendRows');
   wrap.innerHTML='';
@@ -184,7 +184,7 @@ function renderFriends(){
     if(rm) rm.addEventListener('click',function(){removeFriend(parseInt(this.dataset.id));});
   });
 }
-
+ 
 function addFriend(){
   friends.push({id:uid++,label:'친구 '+(friends.length+1),addr:'',lat:null,lng:null});
   renderFriends();
@@ -193,7 +193,7 @@ function removeFriend(id){
   friends=friends.filter(function(f){return f.id!==id;});
   renderFriends(); refreshFMarkers();
 }
-
+ 
 function onInput(id,val){
   var f=friends.find(function(f){return f.id===id;});
   if(!f) return;
@@ -202,7 +202,7 @@ function onInput(id,val){
   if(!val||val.length<2){closeAc(id);return;}
   acTimers[id]=setTimeout(function(){fetchAc(id,val);},380);
 }
-
+ 
 function fetchAc(id,query){
   Promise.all([
     fetch('/api/search/keyword?query='+encodeURIComponent(query)).then(function(r){return r.json();}),
@@ -214,7 +214,7 @@ function fetchAc(id,query){
     showAc(id,items.slice(0,6));
   }).catch(function(){closeAc(id);});
 }
-
+ 
 function showAc(id,items){
   var drop=document.getElementById('ac-'+id);
   if(!drop||!items.length){closeAc(id);return;}
@@ -237,7 +237,7 @@ function pickAddr(id,name,lat,lng){
   if(inp)inp.value=name;
   closeAc(id); refreshFMarkers();
 }
-
+ 
 function refreshFMarkers(){
   fMarkers.forEach(function(m){m.setMap(null);}); fMarkers=[];
   var valid=friends.filter(function(f){return f.lat&&f.lng;});
@@ -249,7 +249,7 @@ function refreshFMarkers(){
   });
   if(valid.length>=2){var b=new kakao.maps.LatLngBounds();valid.forEach(function(f){b.extend(new kakao.maps.LatLng(f.lat,f.lng));});map.setBounds(b,80,80,80,80);}
 }
-
+ 
 function doFind(){
   var valid=friends.filter(function(f){return f.lat&&f.lng;});
   if(valid.length<2){alert('위치를 2개 이상 입력해 주세요.');return;}
@@ -259,7 +259,7 @@ function doFind(){
     .then(function(data){showResults(data,valid);})
     .catch(function(e){alert('오류: '+e.message);setBusy(false);});
 }
-
+ 
 function showResults(data,valid){
   var simple=data.simple, tb=data.timeBased;
   Promise.all([revGeo(simple.lng,simple.lat),revGeo(tb.lng,tb.lat)]).then(function(addrs){
@@ -300,7 +300,7 @@ function showResults(data,valid){
     setBusy(false);
   });
 }
-
+ 
 function loadSubwayBadges(lat,lng,pi){
   fetch('/api/search/category?category_group_code=SW8&x='+lng+'&y='+lat+'&radius=2000')
     .then(function(r){return r.json();})
@@ -319,7 +319,7 @@ function loadSubwayBadges(lat,lng,pi){
       if(!row.children.length) row.innerHTML='<span style="font-size:11px;color:#3a4259">근처 지하철역 없음</span>';
     }).catch(function(){});
 }
-
+ 
 function loadPlaces(code,lat,lng){
   var list=document.getElementById('placeList');
   list.innerHTML='<div class="empty"><div class="spin" style="margin:0 auto 8px"></div></div>';
@@ -341,7 +341,7 @@ function loadPlaces(code,lat,lng){
       });
     }).catch(function(e){list.innerHTML='<div class="empty">오류: '+e.message+'</div>';});
 }
-
+ 
 function revGeo(lng,lat){
   return fetch('/api/geo/coord2address?x='+lng+'&y='+lat)
     .then(function(r){return r.json();})
@@ -351,7 +351,7 @@ function revGeo(lng,lat){
       return (doc.road_address&&doc.road_address.address_name)||(doc.address&&doc.address.address_name)||lat.toFixed(4)+', '+lng.toFixed(4);
     }).catch(function(){return lat.toFixed(4)+', '+lng.toFixed(4);});
 }
-
+ 
 function setBusy(on){
   document.getElementById('findBtn').disabled=on;
   document.getElementById('ld').classList.toggle('on',on);
