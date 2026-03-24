@@ -125,8 +125,7 @@ var activeMid = null;
 var acTimers = {};
 
 /* 카카오 SDK 로드 */
-fetch('/api/config').then(function(r){return r.json();}).then(function(cfg){
-  window.__kakaoInit = function(){
+window.__kakaoInit = function(){
       /* 지도 생성 */
       map = new kakao.maps.Map(document.getElementById('map'),{
         center: new kakao.maps.LatLng(37.5326,127.0246), level:8
@@ -152,11 +151,7 @@ fetch('/api/config').then(function(r){return r.json();}).then(function(cfg){
           if(d && !d.contains(e.target) && e.target!==i) d.style.display='none';
         });
       });
-  };
-  var s = document.createElement('script');
-  s.src = 'https://dapi.kakao.com/v2/maps/sdk.js?appkey='+cfg.jsKey+'&libraries=services&onload=__kakaoInit';
-  document.head.appendChild(s);
-});
+};
 
 function renderFriends(){
   var wrap=document.getElementById('friendRows');
@@ -355,5 +350,6 @@ function setBusy(on){
   document.getElementById('ld').classList.toggle('on',on);
 }
 </script>
+<script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=__KAKAO_JS_KEY__&libraries=services&onload=__kakaoInit"></script>
 </body>
 </html>
