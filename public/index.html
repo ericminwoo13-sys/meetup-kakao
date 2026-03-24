@@ -352,7 +352,7 @@ function showResults(data, valid) {
  
       valid.forEach(function(f, fi) {
         var line = L.polyline([[f.lat,f.lng],[pt.lat,pt.lng]], {
-          color:COLORS[fi%COLORS.length], weight:1.5, opacity:0.4, dashArray:'6,6'
+          color:COLORS[fi%COLORS.length], weight:2.5, opacity:0.75, dashArray:'8,5'
         }).addTo(map);
         polylines.push(line);
       });
@@ -538,4 +538,3 @@ window.addEventListener('load', init);
 </script>
 </body>
 </html>
- 
