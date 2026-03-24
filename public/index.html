@@ -372,14 +372,15 @@ function showResults(data, valid) {
         '<div class="desc">'+pt.desc+'</div>'+
         '<div class="coords">'+pt.lat.toFixed(5)+', '+pt.lng.toFixed(5)+'</div>'+
         '<div class="subway-row" id="sw-'+pi+'"></div>';
-      (function(p){card.addEventListener('click', function() {
+      (function(p, idx){card.addEventListener('click', function() {
         document.querySelectorAll('.r-card').forEach(function(c){c.classList.remove('sel');});
         card.classList.add('sel');
         activeMid = p;
         map.setView([p.lat, p.lng], 13);
+        showSubwayMarkers(idx);
         var onTab = document.querySelector('.cat-tab.on');
         if (onTab) loadPlaces(onTab.dataset.code, p.lat, p.lng);
-      });})(pt);
+      });})(pt, pi);
       grid.appendChild(card);
       loadSubwayBadges(pt.lat, pt.lng, pi);
     });
@@ -391,6 +392,8 @@ function showResults(data, valid) {
   });
 }
  
+var subwayMarkers = [];
+ 
 function loadSubwayBadges(lat, lng, pi) {
   fetch('/api/search/category?category_group_code=SW8&x='+lng+'&y='+lat+'&radius=2000')
     .then(function(r){return r.json();})
@@ -398,8 +401,18 @@ function loadSubwayBadges(lat, lng, pi) {
       var row = document.getElementById('sw-'+pi);
       if (!row) return;
       var seen = new Set();
-      (data.documents||[]).slice(0,4).forEach(function(d) {
-        if (seen.has(d.place_name)) return; seen.add(d.place_name);
+      var docs = (data.documents||[]).filter(function(d){
+        if (seen.has(d.place_name)) return false;
+        seen.add(d.place_name); return true;
+      }).slice(0,4);
+ 
+      // 배지 표시
+      row.innerHTML = '';
+      if (!docs.length) {
+        row.innerHTML = '<span style="font-size:11px;color:#3a4259">근처 지하철역 없음</span>';
+        return;
+      }
+      docs.forEach(function(d) {
         var match = d.place_name.match(/(\d+호선|신분당선|경강선|수인분당선|경의중앙선|GTX-[A-Z])/);
         var color = match ? (SUBWAY_COLORS[match[1]]||'#444') : '#444';
         var badge = document.createElement('span');
@@ -408,12 +421,36 @@ function loadSubwayBadges(lat, lng, pi) {
         badge.textContent = d.place_name;
         (function(doc){badge.addEventListener('click', function(e) {
           e.stopPropagation();
-          map.setView([parseFloat(doc.y), parseFloat(doc.x)], 15);
+          map.setView([parseFloat(doc.y), parseFloat(doc.x)], 16);
         });})(d);
         row.appendChild(badge);
       });
-      if (!row.children.length) row.innerHTML = '<span style="font-size:11px;color:#3a4259">근처 지하철역 없음</span>';
+ 
+      // 지도에 마커 저장 (클릭 시 표시용)
+      row.dataset.docs = JSON.stringify(docs);
     }).catch(function(){});
+}
+ 
+function showSubwayMarkers(pi) {
+  // 기존 지하철 마커 제거
+  subwayMarkers.forEach(function(m){map.removeLayer(m);}); subwayMarkers=[];
+  var row = document.getElementById('sw-'+pi);
+  if (!row || !row.dataset.docs) return;
+  var docs = JSON.parse(row.dataset.docs);
+  docs.forEach(function(d, i) {
+    var plat = parseFloat(d.y), plng = parseFloat(d.x);
+    var match = d.place_name.match(/(\d+호선|신분당선|경강선|수인분당선|경의중앙선|GTX-[A-Z])/);
+    var color = match ? (SUBWAY_COLORS[match[1]]||'#555') : '#555';
+    var icon = L.divIcon({
+      className:'',
+      html:'<div style="background:'+color+';border:2.5px solid #fff;border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700;color:#fff;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.5);">🚇 '+d.place_name+'</div>',
+      iconSize:[140,26], iconAnchor:[12,13]
+    });
+    var marker = L.marker([plat,plng],{icon:icon,zIndexOffset:800}).addTo(map);
+    marker.bindPopup('<b>'+d.place_name+'</b><br><span style="font-size:11px;color:#888">'+(d.road_address_name||d.address_name||'')+'</span>');
+    (function(doc){marker.on('click', function(){openDetail(doc);});})(d);
+    subwayMarkers.push(marker);
+  });
 }
  
 function loadPlaces(code, lat, lng) {
@@ -501,3 +538,4 @@ window.addEventListener('load', init);
 </script>
 </body>
 </html>
+ 
