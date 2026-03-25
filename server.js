@@ -148,6 +148,53 @@ app.get('/api/places/search', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+/* ── ODsay 대중교통 이동시간 ────────────────────────────────── */
+app.get('/api/transit-time', async (req, res) => {
+  try {
+    const { sx, sy, ex, ey } = req.query;
+    const ODSAY_KEY = process.env.ODSAY_API_KEY;
+    if (!ODSAY_KEY) return res.json({ success: false, reason: 'no_key' });
+
+    const r = await axios.get('https://api.odsay.com/v1/api/searchPubTransPathT', {
+      params: {
+        SX: sx, SY: sy, EX: ex, EY: ey,
+        apiKey: ODSAY_KEY,
+      },
+      timeout: 5000,
+    });
+
+    const data = r.data;
+
+    // API 한도 초과 또는 오류 처리
+    if (data.error) {
+      const code = data.error.code;
+      // -8: 일일 한도 초과, -9: 월 한도 초과
+      if (code === -8 || code === -9 || code === '-8' || code === '-9') {
+        return res.json({ success: false, reason: 'quota_exceeded' });
+      }
+      return res.json({ success: false, reason: 'api_error', message: data.error.message });
+    }
+
+    const paths = data.result && data.result.path;
+    if (!paths || !paths.length) return res.json({ success: false, reason: 'no_route' });
+
+    // 가장 빠른 경로
+    const best = paths.reduce((a, b) =>
+      a.info.totalTime < b.info.totalTime ? a : b
+    );
+
+    res.json({
+      success: true,
+      totalTime: best.info.totalTime,       // 분
+      totalWalk: best.info.totalWalk,       // 도보 거리(m)
+      transferCount: best.info.busTransitCount + best.info.subwayTransitCount - 1,
+    });
+  } catch (e) {
+    // 타임아웃 또는 네트워크 오류 → 폴백
+    res.json({ success: false, reason: 'network_error', message: e.message });
+  }
+});
+
 /* ── JS 키 주입 엔드포인트 ──────────────────────────────── */
 // 프론트가 JS 키를 직접 노출하지 않도록 서버에서 내려줌
 app.get('/api/config', (_, res) => {
