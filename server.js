@@ -111,6 +111,43 @@ function buildGrid(locs, steps) {
   return pts;
 }
 
+/* ── Google Places 장소 검색 (사진/별점/영업시간) ─────────── */
+app.get('/api/places/search', async (req, res) => {
+  try {
+    const { name, lat, lng } = req.query;
+    const GKEY = process.env.GOOGLE_PLACES_KEY;
+    // 1) 장소 검색
+    const searchRes = await axios.get('https://maps.googleapis.com/maps/api/place/findplacefromtext/json', {
+      params: {
+        input: name,
+        inputtype: 'textquery',
+        locationbias: `circle:500@${lat},${lng}`,
+        fields: 'place_id,name,rating,user_ratings_total,photos,opening_hours,formatted_phone_number',
+        language: 'ko',
+        key: GKEY,
+      }
+    });
+    const candidates = searchRes.data.candidates;
+    if (!candidates || !candidates.length) return res.json({ found: false });
+
+    const place = candidates[0];
+
+    // 2) 사진 URL 생성 (최대 3장)
+    const photos = (place.photos || []).slice(0, 3).map(p =>
+      `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference=${p.photo_reference}&key=${GKEY}`
+    );
+
+    res.json({
+      found: true,
+      rating: place.rating || null,
+      user_ratings_total: place.user_ratings_total || 0,
+      photos,
+      open_now: place.opening_hours ? place.opening_hours.open_now : null,
+      place_id: place.place_id,
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 /* ── JS 키 주입 엔드포인트 ──────────────────────────────── */
 // 프론트가 JS 키를 직접 노출하지 않도록 서버에서 내려줌
 app.get('/api/config', (_, res) => {
