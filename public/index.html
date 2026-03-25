@@ -101,6 +101,16 @@ header{height:58px;display:flex;align-items:center;gap:12px;padding:0 20px;backg
 .detail-open{font-size:11px;padding:2px 8px;border-radius:20px;font-weight:700;}
 .detail-open.on{background:var(--green-glow);color:var(--green)}
 .detail-open.off{background:rgba(240,101,149,.15);color:var(--red)}
+.share-btn{
+  display:flex;align-items:center;justify-content:center;gap:7px;
+  width:100%;padding:11px;margin-top:8px;
+  background:#FEE500;border:none;border-radius:var(--r);
+  color:#191919;font-size:13px;font-weight:700;
+  cursor:pointer;font-family:'Noto Sans KR',sans-serif;
+  transition:opacity .2s;
+}
+.share-btn:hover{opacity:.88}
+.share-btn svg{width:18px;height:18px;flex-shrink:0}
 .detail-link{
   display:flex;align-items:center;justify-content:center;gap:6px;
   width:100%;padding:10px;margin-top:4px;
@@ -132,6 +142,10 @@ header{height:58px;display:flex;align-items:center;gap:12px;padding:0 20px;backg
     <div class="sec" id="secResult" style="display:none">
       <div class="sec-label">계산 결과</div>
       <div class="result-grid" id="resultGrid"></div>
+      <button class="share-btn" id="shareBtn" style="display:none">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 5.805 2 10.5c0 2.88 1.612 5.437 4.125 7.094L5 21l4.188-2.094C10.055 19.27 11.01 19.5 12 19.5c5.523 0 10-3.805 10-9S17.523 2 12 2z"/></svg>
+        카카오톡으로 공유하기
+      </button>
     </div>
     <div class="sec" id="secPlaces" style="display:none">
       <div class="sec-label">주변 장소</div>
@@ -180,31 +194,37 @@ header{height:58px;display:flex;align-items:center;gap:12px;padding:0 20px;backg
   </div>
 </div>
 </div>
-
+ 
+<script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>
 var COLORS = ['#5b8dee','#f06595','#3ecf8e','#f7b731','#a29bfe','#fd79a8','#00cec9','#e17055'];
 var SUBWAY_COLORS = {'1호선':'#0052A4','2호선':'#00A84D','3호선':'#EF7C1C','4호선':'#00A5DE','5호선':'#996CAC','6호선':'#CD7C2F','7호선':'#747F00','8호선':'#E6186C','9호선':'#BDB092','신분당선':'#D4003B','경강선':'#0052A4','수인분당선':'#F5A200','경의중앙선':'#77C4A3','GTX-A':'#9E4784'};
-
+ 
 var map, friends, uid, fMarkers, midMarkers, polylines, placeMarkers, activeMid, acTimers;
-
+ 
 function init() {
   friends = [{id:0,label:'친구 1',addr:'',lat:null,lng:null},{id:1,label:'친구 2',addr:'',lat:null,lng:null}];
   uid=2; fMarkers=[]; midMarkers=[]; polylines=[]; placeMarkers=[]; activeMid=null; acTimers={};
-
+ 
   map = L.map('map', {
     center: [37.5759, 126.9769],
     zoom: 15,
     zoomControl: true,
   });
-
+ 
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap contributors',
     maxZoom: 19,
   }).addTo(map);
-
+ 
   renderFriends();
-
+ 
+  // 카카오 공유 SDK 초기화
+  fetch('/api/config').then(function(r){return r.json();}).then(function(cfg){
+    if (window.Kakao && !Kakao.isInitialized()) Kakao.init(cfg.jsKey);
+  });
+ 
   document.getElementById('addBtn').addEventListener('click', addFriend);
   document.getElementById('findBtn').addEventListener('click', doFind);
   document.getElementById('catTabs').addEventListener('click', function(e) {
@@ -222,7 +242,7 @@ function init() {
     });
   });
 }
-
+ 
 function renderFriends() {
   var wrap = document.getElementById('friendRows');
   wrap.innerHTML = '';
@@ -247,18 +267,18 @@ function renderFriends() {
     if (rm) rm.addEventListener('click', function(){removeFriend(parseInt(this.dataset.id));});
   });
 }
-
+ 
 function addFriend() {
   friends.push({id:uid++, label:'친구 '+(friends.length+1), addr:'', lat:null, lng:null});
   renderFriends();
 }
-
+ 
 function removeFriend(id) {
   friends = friends.filter(function(f){return f.id!==id;});
   renderFriends();
   refreshFMarkers();
 }
-
+ 
 function onInput(id, val) {
   var f = friends.find(function(f){return f.id===id;});
   if (!f) return;
@@ -267,7 +287,7 @@ function onInput(id, val) {
   if (!val || val.length<2) {closeAc(id); return;}
   acTimers[id] = setTimeout(function(){fetchAc(id, val);}, 380);
 }
-
+ 
 function fetchAc(id, query) {
   Promise.all([
     fetch('/api/search/keyword?query='+encodeURIComponent(query)).then(function(r){return r.json();}),
@@ -284,7 +304,7 @@ function fetchAc(id, query) {
     showAc(id, items.slice(0,6));
   }).catch(function(){closeAc(id);});
 }
-
+ 
 function showAc(id, items) {
   var drop = document.getElementById('ac-'+id);
   if (!drop || !items.length) {closeAc(id); return;}
@@ -298,9 +318,9 @@ function showAc(id, items) {
   });
   drop.style.display = 'block';
 }
-
+ 
 function closeAc(id) {var d=document.getElementById('ac-'+id); if(d) d.style.display='none';}
-
+ 
 function pickAddr(id, name, lat, lng) {
   var f = friends.find(function(f){return f.id===id;});
   if (!f) return;
@@ -310,7 +330,7 @@ function pickAddr(id, name, lat, lng) {
   closeAc(id);
   refreshFMarkers();
 }
-
+ 
 function refreshFMarkers() {
   fMarkers.forEach(function(m){map.removeLayer(m);}); fMarkers=[];
   var valid = friends.filter(function(f){return f.lat&&f.lng;});
@@ -330,7 +350,7 @@ function refreshFMarkers() {
     map.fitBounds(bounds, {padding:[50,50]});
   }
 }
-
+ 
 function doFind() {
   var valid = friends.filter(function(f){return f.lat&&f.lng;});
   if (valid.length < 2) {alert('위치를 2개 이상 입력해 주세요.'); return;}
@@ -343,18 +363,18 @@ function doFind() {
   .then(function(data){showResults(data, valid);})
   .catch(function(e){alert('오류: '+e.message); setBusy(false);});
 }
-
+ 
 function showResults(data, valid) {
   var simple=data.simple, tb=data.timeBased;
   Promise.all([revGeo(simple.lng, simple.lat), revGeo(tb.lng, tb.lat)]).then(function(addrs) {
     midMarkers.forEach(function(m){map.removeLayer(m);}); midMarkers=[];
     polylines.forEach(function(p){map.removeLayer(p);}); polylines=[];
-
+ 
     var pts = [
       {lat:simple.lat, lng:simple.lng, label:'거리 기반', desc:'좌표 평균 중간점', badgeClass:'badge-g', color:'#3ecf8e', addr:addrs[0]},
       {lat:tb.lat, lng:tb.lng, label:'이동 시간 기반', desc:'최대 이동시간 최소 지점', badgeClass:'badge-b', color:'#5b8dee', addr:addrs[1]}
     ];
-
+ 
     pts.forEach(function(pt, pi) {
       var icon = L.divIcon({
         className: '',
@@ -364,7 +384,7 @@ function showResults(data, valid) {
       var marker = L.marker([pt.lat, pt.lng], {icon:icon, zIndexOffset:1000}).addTo(map);
       marker.bindPopup('<b>'+pt.label+'</b><br>'+pt.addr);
       midMarkers.push(marker);
-
+ 
       valid.forEach(function(f, fi) {
         var line = L.polyline([[f.lat,f.lng],[pt.lat,pt.lng]], {
           color:COLORS[fi%COLORS.length], weight:2.5, opacity:0.75, dashArray:'8,5'
@@ -372,12 +392,15 @@ function showResults(data, valid) {
         polylines.push(line);
       });
     });
-
+ 
     document.getElementById('secResult').style.display = 'block';
     document.getElementById('secPlaces').style.display = 'block';
+    var sb = document.getElementById('shareBtn');
+    sb.style.display = 'flex';
+    sb.onclick = shareResult;
     var grid = document.getElementById('resultGrid');
     grid.innerHTML = '';
-
+ 
     pts.forEach(function(pt, pi) {
       var card = document.createElement('div');
       card.className = 'r-card' + (pi===0?' sel':'');
@@ -399,16 +422,16 @@ function showResults(data, valid) {
       grid.appendChild(card);
       loadSubwayBadges(pt.lat, pt.lng, pi);
     });
-
+ 
     activeMid = pts[0];
     map.setView([pts[0].lat, pts[0].lng], 12);
     loadPlaces('FD6', pts[0].lat, pts[0].lng);
     setBusy(false);
   });
 }
-
+ 
 var subwayMarkers = [];
-
+ 
 function loadSubwayBadges(lat, lng, pi) {
   fetch('/api/search/category?category_group_code=SW8&x='+lng+'&y='+lat+'&radius=2000')
     .then(function(r){return r.json();})
@@ -420,7 +443,7 @@ function loadSubwayBadges(lat, lng, pi) {
         if (seen.has(d.place_name)) return false;
         seen.add(d.place_name); return true;
       }).slice(0,4);
-
+ 
       // 배지 표시
       row.innerHTML = '';
       if (!docs.length) {
@@ -440,12 +463,12 @@ function loadSubwayBadges(lat, lng, pi) {
         });})(d);
         row.appendChild(badge);
       });
-
+ 
       // 지도에 마커 저장 (클릭 시 표시용)
       row.dataset.docs = JSON.stringify(docs);
     }).catch(function(){});
 }
-
+ 
 function showSubwayMarkers(pi) {
   // 기존 지하철 마커 제거
   subwayMarkers.forEach(function(m){map.removeLayer(m);}); subwayMarkers=[];
@@ -467,12 +490,12 @@ function showSubwayMarkers(pi) {
     subwayMarkers.push(marker);
   });
 }
-
+ 
 function loadPlaces(code, lat, lng) {
   var list = document.getElementById('placeList');
   list.innerHTML = '<div class="empty"><div class="spin" style="margin:0 auto 8px"></div></div>';
   placeMarkers.forEach(function(m){map.removeLayer(m);}); placeMarkers=[];
-
+ 
   fetch('/api/search/category?category_group_code='+code+'&x='+lng+'&y='+lat+'&radius=3000')
     .then(function(r){return r.json();})
     .then(function(data) {
@@ -494,7 +517,7 @@ function loadPlaces(code, lat, lng) {
           map.setView([lat, lng], 16);
           openDetail(doc);
         });})(d, plat, plng);
-
+ 
         var icon = L.divIcon({
           className:'',
           html:'<div style="background:#1a1e2b;border:1.5px solid #5b8dee;border-radius:6px;padding:2px 7px;font-size:11px;color:#dde3f0;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.4)">'+(i+1)+'. '+(d.place_name.length>8?d.place_name.slice(0,8)+'…':d.place_name)+'</div>',
@@ -505,7 +528,7 @@ function loadPlaces(code, lat, lng) {
       });
     }).catch(function(e){list.innerHTML='<div class="empty">오류: '+e.message+'</div>';});
 }
-
+ 
 function revGeo(lng, lat) {
   return fetch('/api/geo/coord2address?x='+lng+'&y='+lat)
     .then(function(r){return r.json();})
@@ -515,13 +538,13 @@ function revGeo(lng, lat) {
       return (doc.road_address&&doc.road_address.address_name)||(doc.address&&doc.address.address_name)||lat.toFixed(4)+', '+lng.toFixed(4);
     }).catch(function(){return lat.toFixed(4)+', '+lng.toFixed(4);});
 }
-
+ 
 function openDetail(d) {
   var panel = document.getElementById('detailPanel');
   document.getElementById('dpName').textContent = d.place_name;
   document.getElementById('dpCat').textContent = d.category_name ? d.category_name.split(' > ').pop() : '';
   document.getElementById('dpAddr').textContent = d.road_address_name || d.address_name || '';
-
+ 
   // 전화번호
   if (d.phone) {
     document.getElementById('dpPhone').textContent = d.phone;
@@ -529,7 +552,7 @@ function openDetail(d) {
   } else {
     document.getElementById('dpPhoneRow').style.display = 'none';
   }
-
+ 
   // 거리
   if (d.distance) {
     document.getElementById('dpDist').textContent = '중간점에서 '+Math.round(d.distance)+'m';
@@ -537,24 +560,24 @@ function openDetail(d) {
   } else {
     document.getElementById('dpDistRow').style.display = 'none';
   }
-
+ 
   document.getElementById('dpLink').href = d.place_url || 'https://map.kakao.com/link/search/'+encodeURIComponent(d.place_name);
-
+ 
   // 사진/별점 초기화
   document.getElementById('dpPhotos').style.display = 'none';
   document.getElementById('dpPhotos').innerHTML = '';
   document.getElementById('dpRating').style.display = 'none';
-
+ 
   panel.classList.add('open');
   setTimeout(function(){ map.invalidateSize(); }, 310);
-
+ 
   // Google Places 사진/별점 비동기 로드
   var lat = d.y, lng = d.x;
   fetch('/api/places/search?name='+encodeURIComponent(d.place_name)+'&lat='+lat+'&lng='+lng)
     .then(function(r){return r.json();})
     .then(function(g) {
       if (!g.found) return;
-
+ 
       // 별점
       if (g.rating) {
         var stars = Math.round(g.rating);
@@ -565,7 +588,7 @@ function openDetail(d) {
         document.getElementById('dpRatingCount').textContent = '(' + g.user_ratings_total.toLocaleString() + '개)';
         document.getElementById('dpRating').style.display = 'flex';
       }
-
+ 
       // 영업 여부
       if (g.open_now !== null) {
         var openEl = document.getElementById('dpOpen');
@@ -578,7 +601,7 @@ function openDetail(d) {
           openEl.className = 'detail-open off';
         }
       }
-
+ 
       // 사진
       if (g.photos && g.photos.length) {
         var photoWrap = document.getElementById('dpPhotos');
@@ -594,17 +617,38 @@ function openDetail(d) {
       }
     }).catch(function(){});
 }
-
+ 
 function closeDetail() {
   document.getElementById('detailPanel').classList.remove('open');
   setTimeout(function(){ map.invalidateSize(); }, 310);
 }
-
+ 
+function shareResult() {
+  if (!activeMid) return;
+  var title = '중간 지점을 찾았어요!';
+  var desc = activeMid.addr + ' 근처에서 만나요 😊';
+  var url = window.location.href;
+ 
+  if (window.Kakao && Kakao.isInitialized()) {
+    Kakao.Share.sendDefault({
+      objectType: 'text',
+      text: title + '\n' + desc + '\n\n📍 ' + activeMid.addr + '\n\n중간 지점 찾기 앱으로 확인하세요!',
+      link: { mobileWebUrl: url, webUrl: url },
+      buttons: [{ title: '지도에서 보기', link: { mobileWebUrl: url, webUrl: url } }],
+    });
+  } else {
+    // 카카오 SDK 없을 때 링크 복사로 대체
+    navigator.clipboard.writeText(title + '\n' + desc + '\n' + url).then(function(){
+      alert('링크가 클립보드에 복사됐어요!');
+    });
+  }
+}
+ 
 function setBusy(on) {
   document.getElementById('findBtn').disabled = on;
   document.getElementById('ld').classList.toggle('on', on);
 }
-
+ 
 window.addEventListener('load', init);
 </script>
 </body>
