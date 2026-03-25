@@ -69,6 +69,16 @@ header{height:58px;display:flex;align-items:center;gap:12px;padding:0 20px;backg
 .r-card .coords{font-family:'Space Mono',monospace;font-size:10px;color:var(--text3);margin-top:6px}
 .subway-row{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
 .s-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;color:#fff;display:inline-flex;align-items:center;cursor:pointer;}
+.main-station{
+  display:flex;align-items:center;gap:8px;margin:6px 0 4px;
+  padding:7px 10px;border-radius:var(--r);
+  background:var(--surface3);border:1px solid var(--border2);
+  cursor:pointer;transition:border-color .2s;
+}
+.main-station:hover{border-color:var(--accent)}
+.main-station-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.main-station-name{font-size:13px;font-weight:700;color:var(--text);flex:1}
+.main-station-label{font-size:10px;color:var(--text2)}
 .cat-tabs{display:flex;flex-wrap:wrap;gap:5px}
 .cat-tab{padding:5px 11px;border-radius:20px;font-size:12px;font-weight:500;border:1px solid var(--border);background:none;color:var(--text2);cursor:pointer;font-family:'Noto Sans KR',sans-serif;}
 .cat-tab:hover,.cat-tab.on{border-color:var(--accent);color:var(--accent);background:var(--accent-glow)}
@@ -417,7 +427,11 @@ function showResults(data, valid) {
       card.className = 'r-card' + (pi===0?' sel':'');
       card.innerHTML =
         '<div class="r-card-top"><span class="badge '+pt.badgeClass+'">'+pt.label+'</span></div>'+
-        '<h3>'+pt.addr+'</h3>'+
+        '<div class="main-station" id="ms-'+pi+'">'+
+          '<div class="main-station-dot" id="ms-dot-'+pi+'" style="background:#444"></div>'+
+          '<div class="main-station-name" id="ms-name-'+pi+'">지하철역 검색 중…</div>'+
+          '<div class="main-station-label">추천역</div>'+
+        '</div>'+
         '<div class="desc">'+pt.desc+'</div>'+
         '<div class="coords">'+pt.lat.toFixed(5)+', '+pt.lng.toFixed(5)+'</div>'+
         '<div class="subway-row" id="sw-'+pi+'"></div>';
@@ -438,8 +452,14 @@ function showResults(data, valid) {
     map.setView([pts[0].lat, pts[0].lng], 12);
     loadPlaces('FD6', pts[0].lat, pts[0].lng);
 
-    // 각 친구별 이동 시간 표시 (거리 기반 중간점 기준)
-    showTravelTimes(pts[0].lat, pts[0].lng);
+    // 각 친구별 이동 시간 — 최적 지하철역 로드 후 계산
+    // loadSubwayBadges 가 비동기라 약간 대기 후 실행
+    setTimeout(function(){
+      var row0 = document.getElementById('sw-0');
+      var sLat = row0 && row0.dataset.mainLat ? parseFloat(row0.dataset.mainLat) : pts[0].lat;
+      var sLng = row0 && row0.dataset.mainLng ? parseFloat(row0.dataset.mainLng) : pts[0].lng;
+      showTravelTimes(sLat, sLng);
+    }, 1500);
     setBusy(false);
   });
 }
@@ -451,35 +471,55 @@ function loadSubwayBadges(lat, lng, pi) {
     .then(function(r){return r.json();})
     .then(function(data) {
       var row = document.getElementById('sw-'+pi);
+      var msName = document.getElementById('ms-name-'+pi);
+      var msDot  = document.getElementById('ms-dot-'+pi);
+      var msBox  = document.getElementById('ms-'+pi);
       if (!row) return;
+
       var seen = new Set();
       var docs = (data.documents||[]).filter(function(d){
         if (seen.has(d.place_name)) return false;
         seen.add(d.place_name); return true;
       }).slice(0,4);
 
-      // 배지 표시
-      row.innerHTML = '';
       if (!docs.length) {
-        row.innerHTML = '<span style="font-size:11px;color:#3a4259">근처 지하철역 없음</span>';
+        if (msName) msName.textContent = '근처 지하철역 없음';
         return;
       }
-      docs.forEach(function(d) {
+
+      // 첫번째 역 → 메인 표시
+      var main = docs[0];
+      var mainMatch = main.place_name.match(/(\d+호선|신분당선|경강선|수인분당선|경의중앙선|GTX-[A-Z])/);
+      var mainColor = mainMatch ? (SUBWAY_COLORS[mainMatch[1]]||'#5b8dee') : '#5b8dee';
+      if (msName) msName.textContent = main.place_name;
+      if (msDot)  msDot.style.background = mainColor;
+      if (msBox) {
+        (function(doc){msBox.addEventListener('click', function(e){
+          e.stopPropagation();
+          map.setView([parseFloat(doc.y), parseFloat(doc.x)], 16);
+        });})(main);
+      }
+
+      // 나머지 역 → 배지
+      row.innerHTML = '';
+      docs.slice(1).forEach(function(d) {
         var match = d.place_name.match(/(\d+호선|신분당선|경강선|수인분당선|경의중앙선|GTX-[A-Z])/);
         var color = match ? (SUBWAY_COLORS[match[1]]||'#444') : '#444';
         var badge = document.createElement('span');
         badge.className = 's-badge';
         badge.style.background = color;
         badge.textContent = d.place_name;
-        (function(doc){badge.addEventListener('click', function(e) {
+        (function(doc){badge.addEventListener('click', function(e){
           e.stopPropagation();
           map.setView([parseFloat(doc.y), parseFloat(doc.x)], 16);
         });})(d);
         row.appendChild(badge);
       });
 
-      // 지도에 마커 저장 (클릭 시 표시용)
+      // 지도 마커용 데이터 저장
       row.dataset.docs = JSON.stringify(docs);
+      row.dataset.mainLat = main.y;
+      row.dataset.mainLng = main.x;
     }).catch(function(){});
 }
 
@@ -529,6 +569,7 @@ function loadPlaces(code, lat, lng) {
           '</div>';
         (function(doc, lat, lng){el.addEventListener('click', function(){
           map.setView([lat, lng], 16);
+          setTimeout(function(){ map.invalidateSize(); }, 50);
           openDetail(doc);
         });})(d, plat, plng);
 
