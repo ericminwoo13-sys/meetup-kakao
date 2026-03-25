@@ -538,6 +538,20 @@ function applySubwayResults(lat, lng, pi, rawDocs) {
       row.dataset.docs = JSON.stringify(docs);
       row.dataset.mainLat = main.y;
       row.dataset.mainLng = main.x;
+ 
+      // 두 카드 모두 로드 완료됐는지 확인 후 거리기반(0) 기준으로 마커 표시
+      var row0 = document.getElementById('sw-0');
+      var row1 = document.getElementById('sw-1');
+      var both = row0 && row0.dataset.docs && row1 && row1.dataset.docs;
+      var either = (pi === 0 && row0 && row0.dataset.docs) ||
+                   (pi === 1 && row0 && row0.dataset.docs);
+      if (both) {
+        // 둘 다 완료 — 거리기반 기준으로 표시
+        showSubwayMarkers(0);
+      } else if (pi === 0 && row0 && row0.dataset.docs) {
+        // 거리기반만 완료 — 일단 표시
+        showSubwayMarkers(0);
+      }
 }
  
 function showSubwayMarkers(pi) {
