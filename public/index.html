@@ -442,7 +442,6 @@ function showResults(data, valid) {
         document.querySelectorAll('.r-card').forEach(function(c){c.classList.remove('sel');});
         card.classList.add('sel');
         activeMid = p;
-        map.setView([p.lat, p.lng], 18);
         showSubwayMarkers(idx);
         var onTab = document.querySelector('.cat-tab.on');
         if (onTab) loadPlaces(onTab.dataset.code, p.lat, p.lng);
@@ -469,10 +468,26 @@ function showResults(data, valid) {
  
 var subwayMarkers = [];
  
-function loadSubwayBadges(lat, lng, pi) {
-  fetch('/api/search/category?category_group_code=SW8&x='+lng+'&y='+lat+'&radius=2000')
+function searchSubwayWithRadius(lat, lng, pi, radius) {
+  fetch('/api/search/category?category_group_code=SW8&x='+lng+'&y='+lat+'&radius='+radius)
     .then(function(r){return r.json();})
     .then(function(data) {
+      var docs = (data.documents||[]);
+      // 결과 없고 반경이 10000 미만이면 반경 늘려서 재시도
+      if (!docs.length && radius < 10000) {
+        var next = radius === 2000 ? 5000 : 10000;
+        searchSubwayWithRadius(lat, lng, pi, next);
+        return;
+      }
+      applySubwayResults(lat, lng, pi, docs);
+    }).catch(function(){});
+}
+ 
+function loadSubwayBadges(lat, lng, pi) {
+  searchSubwayWithRadius(lat, lng, pi, 2000);
+}
+ 
+function applySubwayResults(lat, lng, pi, rawDocs) {
       var row = document.getElementById('sw-'+pi);
       var msName = document.getElementById('ms-name-'+pi);
       var msDot  = document.getElementById('ms-dot-'+pi);
@@ -480,7 +495,7 @@ function loadSubwayBadges(lat, lng, pi) {
       if (!row) return;
  
       var seen = new Set();
-      var docs = (data.documents||[]).filter(function(d){
+      var docs = (rawDocs||[]).filter(function(d){
         if (seen.has(d.place_name)) return false;
         seen.add(d.place_name); return true;
       }).slice(0,4);
@@ -523,29 +538,42 @@ function loadSubwayBadges(lat, lng, pi) {
       row.dataset.docs = JSON.stringify(docs);
       row.dataset.mainLat = main.y;
       row.dataset.mainLng = main.x;
-    }).catch(function(){});
 }
  
 function showSubwayMarkers(pi) {
-  // 기존 지하철 마커 제거
   subwayMarkers.forEach(function(m){map.removeLayer(m);}); subwayMarkers=[];
   var row = document.getElementById('sw-'+pi);
   if (!row || !row.dataset.docs) return;
   var docs = JSON.parse(row.dataset.docs);
+ 
+  // 현재 선택된 중간점 마커 위치
+  var midMarker = midMarkers[pi];
+  var midLatLng = midMarker ? midMarker.getLatLng() : null;
+ 
+  // fitBounds 계산용
+  var bounds = midLatLng ? L.latLngBounds([midLatLng]) : null;
+ 
   docs.forEach(function(d, i) {
     var plat = parseFloat(d.y), plng = parseFloat(d.x);
     var match = d.place_name.match(/(\d+호선|신분당선|경강선|수인분당선|경의중앙선|GTX-[A-Z])/);
     var color = match ? (SUBWAY_COLORS[match[1]]||'#555') : '#555';
+    var isMain = i === 0;
     var icon = L.divIcon({
       className:'',
-      html:'<div style="background:'+color+';border:2.5px solid #fff;border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700;color:#fff;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.5);">🚇 '+d.place_name+'</div>',
-      iconSize:[140,26], iconAnchor:[12,13]
+      html:'<div style="background:'+color+';border:'+(isMain?'3':'2')+'px solid #fff;border-radius:6px;padding:'+(isMain?'5px 11px':'3px 8px')+';font-size:'+(isMain?'13':'11')+'px;font-weight:700;color:#fff;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.6);">🚇 '+d.place_name+'</div>',
+      iconSize:[140,isMain?30:24], iconAnchor:[12,isMain?15:12]
     });
-    var marker = L.marker([plat,plng],{icon:icon,zIndexOffset:800}).addTo(map);
+    var marker = L.marker([plat,plng],{icon:icon,zIndexOffset:isMain?900:800}).addTo(map);
     marker.bindPopup('<b>'+d.place_name+'</b><br><span style="font-size:11px;color:#888">'+(d.road_address_name||d.address_name||'')+'</span>');
     (function(doc){marker.on('click', function(){openDetail(doc);});})(d);
     subwayMarkers.push(marker);
+    if (bounds) bounds.extend([plat, plng]);
   });
+ 
+  // 중간점 + 추천역 모두 보이도록 자동 줌
+  if (bounds && bounds.isValid()) {
+    map.fitBounds(bounds, {padding:[60,60], maxZoom:16});
+  }
 }
  
 function loadPlaces(code, lat, lng) {
